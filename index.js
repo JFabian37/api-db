@@ -1,29 +1,59 @@
-const express = require('express');
-const cors = require('cors');
-const sequelize = require('./config/db');
 require('dotenv').config();
 
-// Importar Modelos para que Sequelize los registre
-const Producto = require('./models/Producto');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+
+const prepararBaseDatos = require('./src/prepararBaseDatos');
+const rutasApi = require('./routes');
+const { limiteGeneral } = require('./middleware/rateLimiters');
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
+
+// Sin esta clave cualquier token seria inseguro: mejor no arrancar
+if (!process.env.JWT_SECRET) {
+    console.error('Falta JWT_SECRET en .env');
+    process.exit(1);
+}
+
+const origenesPermitidos = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origen) => origen.trim())
+    .filter(Boolean);
 
 const app = express();
 
 // --- MIDDLEWARES ---
-// Habilitar CORS para permitir peticiones desde el frontend (React)
-app.use(cors());
-// Parsear el body de las peticiones a JSON
+// El orden importa. morgan va primero para registrar tambien las peticiones rechazadas
+app.use(morgan('dev'));
+app.use(helmet());
+// Habilitar CORS solo para los origenes configurados en .env
+app.use(cors({
+    origin: origenesPermitidos,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+// Parsear el body de las peticiones a JSON. Debe ir antes de las rutas: si no, req.body llega undefined
 app.use(express.json());
+app.use('/api/', limiteGeneral);
 
-// --- RUTAS BÁSICAS DE PRUEBA ---
+// --- RUTAS BASICAS DE PRUEBA ---
 app.get('/', (req, res) => {
     res.send('¡API Backend funcionando exitosamente!');
 });
 
-// --- SINCRONIZACIÓN Y ARRANQUE ---
+app.use('/api', rutasApi);
+
+// --- MANEJO DE ERRORES ---
+// Siempre al final: solo reciben lo que ninguna ruta atendio
+app.use(notFound);
+app.use(errorHandler);
+
+// --- SINCRONIZACION Y ARRANQUE ---
 const PORT = process.env.PORT || 3006;
 
-// force: false evita que se borren los datos cada vez que se reinicia el servidor
-sequelize.sync({ force: false })
+prepararBaseDatos()
     .then(() => {
         console.log('Base de datos conectada y sincronizada.');
         app.listen(PORT, () => {

@@ -1,0 +1,690 @@
+{
+  "info": {
+    "name": "Panel de Inventario API",
+    "description": "Ejecuta primero \"Login\": guarda el token en el entorno y las demas peticiones lo usan.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Autenticacion",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('Devuelve un token', () => pm.expect(cuerpo.token).to.be.a('string'));",
+                  "pm.test('No devuelve la contrasena', () => pm.expect(cuerpo.usuario).to.not.have.property('password'));",
+                  "pm.environment.set('token', cuerpo.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en la variable de entorno token."
+          },
+          "response": []
+        },
+        {
+          "name": "Perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve el usuario', () => pm.expect(pm.response.json().usuario.email).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "perfil"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register (requiere Administrador)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Asigna el rol enviado', () => pm.expect(pm.response.json().usuario.rol).to.equal('Supervisor'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario Postman\",\n  \"email\": \"postman.{{$timestamp}}@inventario.test\",\n  \"password\": \"Clave12345\",\n  \"rol\": \"Supervisor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Solo un Administrador puede registrar usuarios: por eso va despues de Login."
+          },
+          "response": []
+        },
+        {
+          "name": "Perfil sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error uniforme', () => pm.expect(pm.response.json().ok).to.equal(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "perfil"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Productos",
+      "item": [
+        {
+          "name": "Listar categorias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('categoria_id', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categorias?limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categorias"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Guarda una categoria para crear el producto."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Respuesta paginada', () => { pm.expect(respuesta.data).to.be.an('array'); pm.expect(respuesta.meta).to.have.all.keys('total', 'page', 'limit', 'pages'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/productos?page=1&limit=5&q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "q",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Productos en bajo stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todos bajo el minimo', () => pm.response.json().data.forEach((p) => pm.expect(p.stock).to.be.at.most(p.stock_minimo)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/productos?bajo_stock=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos"
+              ],
+              "query": [
+                {
+                  "key": "bajo_stock",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const registro = pm.response.json().data;",
+                  "pm.test('Genera el codigo', () => pm.expect(registro.codigo).to.match(/^P-\\d{4}$/));",
+                  "pm.test('Precio numerico', () => pm.expect(registro.precio).to.be.a('number'));",
+                  "pm.environment.set('producto_id', registro.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Producto Postman {{$timestamp}}\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"precio\": 49.9,\n  \"stock\": 10,\n  \"stock_minimo\": 3,\n  \"categoria_id\": \"{{categoria_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/productos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos"
+              ]
+            },
+            "description": "El stock inicial queda registrado como una Entrada en el kardex."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye la categoria', () => pm.expect(pm.response.json().data.categoria.nombre).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/productos/{{producto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos",
+                "{{producto_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Editar producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const registro = pm.response.json().data;",
+                  "pm.test('Actualiza el precio', () => pm.expect(registro.precio).to.equal(59.9));",
+                  "pm.test('Ignora el stock', () => pm.expect(registro.stock).to.equal(10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 59.9,\n  \"stock\": 9999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/productos/{{producto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos",
+                "{{producto_id}}"
+              ]
+            },
+            "description": "El campo stock se ignora: solo el kardex puede cambiarlo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Movimientos",
+      "item": [
+        {
+          "name": "Registrar entrada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Stock 10 a 15', () => pm.expect(pm.response.json().data.stock_nuevo).to.equal(15));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"producto_id\": \"{{producto_id}}\",\n  \"tipo_movimiento\": \"Entrada\",\n  \"cantidad\": 5,\n  \"observaciones\": \"Desde Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/movimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar salida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const registro = pm.response.json().data;",
+                  "pm.test('Stock 15 a 12', () => pm.expect(registro.stock_nuevo).to.equal(12));",
+                  "pm.environment.set('movimiento_id', registro.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"producto_id\": \"{{producto_id}}\",\n  \"tipo_movimiento\": \"Salida\",\n  \"cantidad\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/movimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Salida sin stock suficiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.include('Stock insuficiente'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"producto_id\": \"{{producto_id}}\",\n  \"tipo_movimiento\": \"Salida\",\n  \"cantidad\": 9999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/movimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar movimientos del producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entrada inicial, entrada y salida', () => pm.expect(pm.response.json().meta.total).to.equal(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movimientos?producto_id={{producto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos"
+              ],
+              "query": [
+                {
+                  "key": "producto_id",
+                  "value": "{{producto_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Anular movimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda anulado', () => pm.expect(pm.response.json().data.anulado).to.equal(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movimientos/{{movimiento_id}}/anular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos",
+                "{{movimiento_id}}",
+                "anular"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Anular dos veces",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movimientos/{{movimiento_id}}/anular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movimientos",
+                "{{movimiento_id}}",
+                "anular"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Resumen y cierre",
+      "item": [
+        {
+          "name": "Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const registro = pm.response.json().data;",
+                  "pm.test('Trae los indicadores', () => pm.expect(registro).to.include.keys('total_productos', 'bajo_stock', 'valorizacion', 'movimientos_recientes', 'stock_por_categoria'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Avisa que quedo inactivo', () => pm.expect(pm.response.json().mensaje).to.include('inactivo'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/productos/{{producto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "productos",
+                "{{producto_id}}"
+              ]
+            },
+            "description": "Tiene movimientos: queda inactivo para conservar el historial."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

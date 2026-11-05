@@ -8,7 +8,10 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST,
         dialect: 'mysql',
-        logging: false // Para no saturar la consola con consultas SQL
+        logging: false, // Para no saturar la consola con consultas SQL
+        define: {
+            underscored: true // created_at, updated_at y llaves foraneas en snake_case
+        }
     }
 );
 
