@@ -31,6 +31,8 @@ npm run dev
 
 La API queda en `http://localhost:3006`. La base de datos y las tablas se crean solas al arrancar.
 
+También puedes restaurar la copia incluida en `database/api-db.sql` desde HeidiSQL. Para retomar el proyecto en otra computadora, sigue [docs/CONTINUAR.md](docs/CONTINUAR.md).
+
 ## Comandos
 
 | Comando | Qué hace |
@@ -234,4 +236,6 @@ services/      Lógica del kardex
 src/           Preparación de la base de datos y seed
 utils/         ApiError, asyncHandler, paginación y consultas
 postman/       Colección y entorno
+database/      Copia de la base de datos con datos de ejemplo
+docs/          Guía para continuar, plan y scripts de verificación
 ```
